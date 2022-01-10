@@ -12,10 +12,10 @@ Following is the execution sequence.
 python dividedata.py 1
 
 # Generate Sub-datasets based on P-values
-python pvalue.py $SLURM_ARRAY_TASK_ID 5.05915e-50
-python pvalue.py $SLURM_ARRAY_TASK_ID 5.05915e-30
-python pvalue.py $SLURM_ARRAY_TASK_ID 5.05915e-10
-python pvalue.py $SLURM_ARRAY_TASK_ID 1
+python pvalue.py 1 5.05915e-50
+python pvalue.py 1 5.05915e-30
+python pvalue.py 1 5.05915e-10
+python pvalue.py 1 1
 
 
 # This file contains code to train 2D CNN. 
