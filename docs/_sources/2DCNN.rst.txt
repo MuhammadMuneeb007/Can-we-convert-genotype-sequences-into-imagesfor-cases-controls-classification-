@@ -1,0 +1,348 @@
+2DCNN
+======================================================================
+
+ 
+python imports
+------------------------
+
+.. code-block:: console
+
+    from __future__ import absolute_import, division, print_function
+    import argparse 
+    from tensorflow.keras import Model, layers
+    import numpy as np
+    import math
+    import pandas as pd
+    from sklearn.preprocessing import StandardScaler 
+    from numpy import genfromtxt
+    from sklearn import svm 
+    from numpy import genfromtxt
+    import pandas as pd
+    import numpy as np
+    import matplotlib.pyplot as plt
+    import math
+    from sklearn.model_selection import train_test_split
+    from sklearn.model_selection import StratifiedKFold
+    from PIL import Image
+    from tensorflow.keras.preprocessing.image import ImageDataGenerator
+    from tensorflow.keras.models import Sequential
+    from tensorflow.keras.layers import Dense, Conv2D, Dropout, Flatten, MaxPooling2D
+    from tensorflow.keras import layers
+    from tensorflow.keras import optimizers
+    from sklearn.model_selection import train_test_split
+    from tensorflow.keras.utils import to_categorical
+    import tensorflow as tf
+    import matplotlib.pyplot as plt
+    from sklearn.preprocessing import StandardScaler
+    
+    from sklearn.metrics import accuracy_score
+    from sklearn.metrics import confusion_matrix
+    import warnings
+    warnings.filterwarnings('ignore')
+    
+    from datetime import datetime
+    from sklearn.model_selection import RandomizedSearchCV, GridSearchCV
+    from sklearn.metrics import roc_auc_score
+    from sklearn.model_selection import StratifiedKFold
+    scaler = StandardScaler()
+    import tensorflow.keras
+    from sklearn.metrics import precision_score, recall_score, accuracy_score 
+    from tensorflow.keras.models import Sequential, load_model
+    from tensorflow.keras.layers import Dense, Dropout, Activation,ActivityRegularization
+    from tensorflow.keras.utils import to_categorical
+    from sklearn import metrics
+    import tensorflow as tf
+    from tensorflow.keras.layers import LSTM, GRU,Bidirectional
+    from sklearn import preprocessing 
+    from tensorflow.keras.layers import Reshape 
+    import seaborn as sn
+    import matplotlib.pyplot as plt
+    from pylab import rcParams
+    import sys
+    import os
+    from sklearn import tree, ensemble
+    from imblearn.under_sampling import RandomUnderSampler
+    from imblearn.pipeline import make_pipeline
+    from sklearn.metrics import roc_auc_score
+
+
+    def metric(name,best_model,x_train,y_train,x_test,y_test):
+  
+        y_pred = best_model.predict(x_test)
+        sn.set(font_scale=2)
+        rcParams['figure.figsize'] = 7, 7
+        confusion_matrix = pd.crosstab(y_test.argmax(axis=1), y_pred.argmax(axis=1), rownames=['Actual'], colnames=['Predicted'])
+        sn.heatmap(confusion_matrix, annot=True)
+
+        plt.savefig(args.path+os.sep+name+"Test.png")
+        plt.clf()
+        confusion_matrix = pd.crosstab(y_train.argmax(axis=1), best_model.predict(x_train).argmax(axis=1), rownames=['Actual'], colnames=['Predicted'])
+        sn.heatmap(confusion_matrix, annot=True)
+
+        plt.savefig(args.path+os.sep+name+"Train.png")
+        plt.clf()
+
+Encoding schemes
+------------------------
+
+.. code-block:: console
+ 
+    def visualization(X_train,name):
+        if name=="1":
+            endofimage = int(math.sqrt(X_train.shape[1]))**2
+            if int(math.sqrt(X_train.shape[1]))<20:
+            return "not"
+            X_train = X_train[:,0:endofimage]
+            X_train = X_train.reshape(X_train.shape[0],int(math.sqrt(X_train.shape[1])),int(math.sqrt(X_train.shape[1])),1)
+            return X_train
+        if name=="2":
+            where_2 = np.where(X_train == 2)
+            X_train[where_2] = 0
+            endofimage = int(math.sqrt(X_train.shape[1]))**2
+            if int(math.sqrt(X_train.shape[1]))<20:
+            return "not"
+            X_train = X_train[:,0:endofimage]
+            X_train = X_train.reshape(X_train.shape[0],int(math.sqrt(X_train.shape[1])),int(math.sqrt(X_train.shape[1])),1)
+            return X_train
+
+        if name=="3":
+            X_train = X_train.astype(int)
+            where_2 = np.where(X_train == 2)
+            X_train[where_2] = 0
+            
+            new_X_train = np.zeros(shape=(X_train.shape[0],int(X_train.shape[1]/8))) 
+            print("Eight pixel reduction",int(X_train.shape[1]/8))
+            if int(X_train.shape[1]/8)<8:
+                return "not"
+            for loop in range(0,len(new_X_train )):
+                temp = X_train[loop,:]
+                data2 = []
+                for loop2 in range(0,int(X_train.shape[1]/8)):
+                    xx = list(temp[loop2*8:loop2*8+8])
+                    res = int("".join(str(x) for x in xx), 2)
+                    data2.append(res)
+                new_X_train[loop,:] =np.array(data2)  
+
+            if new_X_train.shape[1]<20:
+                return "not"
+            X_train = new_X_train.copy()
+            endofimage = int(math.sqrt(X_train.shape[1]))**2
+            X_train = X_train[:,0:endofimage]
+            X_train = X_train.reshape(X_train.shape[0],int(math.sqrt(X_train.shape[1])),int(math.sqrt(X_train.shape[1])),1)
+            if int(math.sqrt(X_train.shape[1]))<20:
+                return "not"
+            
+            print("Final shape reduction",int(X_train.shape[1]))
+            return X_train
+
+
+2DCNN Visualization 
+------------------------
+
+.. code-block:: console
+
+    # This function is used to visualize the 2DCNN layer.
+    def visualizecnn(model, X,activations):
+        layer_names = []
+
+        # There are 4 2DCNN layers.
+        for layer in model.layers[:4]:
+            layer_names.append(layer.name)
+        
+        
+        images_per_row = 16
+        
+        # Now let's display our feature maps
+        for layer_name, layer_activation in zip(layer_names, activations):
+            print("Layer Name: ",layer_name)
+            # This is the number of features in the feature map
+            n_features = layer_activation.shape[-1]
+        
+            # The feature map has shape (1, size, size, n_features)
+            size = layer_activation.shape[1]
+        
+            # We will tile the activation channels in this matrix
+            n_cols = n_features // images_per_row
+            display_grid = np.zeros((size * n_cols, images_per_row * size))
+        
+            # We'll tile each filter into this big horizontal grid
+            for col in range(n_cols):
+                for row in range(images_per_row):
+                    channel_image = layer_activation[0,
+                                                    :, :,
+                                                    col * images_per_row + row]
+                    # Post-process the feature to make it visually palatable
+                    channel_image -= channel_image.mean()
+                    channel_image /= channel_image.std()
+                    channel_image *= 64
+                    channel_image += 128
+                    channel_image = np.clip(channel_image, 0, 255).astype('uint8')
+                    display_grid[col * size : (col + 1) * size,
+                                row * size : (row + 1) * size] = channel_image
+        
+            # Display the grid
+            scale = 1. / size
+            plt.figure(figsize=(scale * display_grid.shape[1],
+                                scale * display_grid.shape[0]))
+            plt.title(layer_name)
+            plt.grid(False)
+            plt.imshow(display_grid, aspect='auto', cmap='viridis')
+            
+            # Save the layer visualization.
+            plt.savefig(layer_name+".png")
+
+
+    from tensorflow.keras import backend as K
+    import tensorflow as tf
+    tf.compat.v1.disable_eager_execution()
+
+    # This function is used to find the regions in the image which cause a particular person a case or control.
+    # caseorcontrol variable should be 0 for control or 1 for the case.
+    def visualizecnn2(model,Original, X,caseorcontrol,activations):
+        import cv2  
+        X = X.reshape(1,X.shape[0],X.shape[1],X.shape[2])
+        preds = model.predict(X)
+        
+        model_output = model.output[:, caseorcontrol] 
+        last_conv_layer = model.get_layer('conv2d_1')
+        grads = K.gradients(model_output, last_conv_layer.output)[0]
+        pooled_grads = K.mean(grads, axis=(0, 1, 2))
+        iterate = K.function([model.input], [pooled_grads, last_conv_layer.output[0]])
+        pooled_grads_value, conv_layer_output_value = iterate([X])
+        for i in range(64):
+            conv_layer_output_value[:, :, i] *= pooled_grads_value[i]
+        
+        heatmap = np.mean(conv_layer_output_value, axis=-1)
+        
+        heatmap = np.maximum(heatmap, 0)
+        heatmap /= np.max(heatmap)
+        plt.matshow(heatmap)
+        plt.imshow(heatmap)
+        plt.savefig('heatmaporiginal.png')
+        heatmap = cv2.resize(heatmap, (X.shape[2], X.shape[1]))
+        heatmap = np.uint8(255 * heatmap)
+        Original = Original.reshape(X.shape[1],X.shape[2])
+        superimposed_img = heatmap * 0.4 + Original
+        plt.matshow(superimposed_img)
+        plt.savefig("heatmapsuperimposed_img.png")
+
+
+2DCNN Machine Learning Model
+------------------------------------
+
+.. code-block:: console
+
+    import pandas as pd 
+    from os import makedirs
+
+    direc = sys.argv[1]  
+    trainpath= "./"+direc+os.sep+"train/"
+    testpath = "./"+direc+os.sep+"test/"
+
+
+
+    allsnps = os.listdir("./"+direc)
+    from xgboost import XGBClassifier
+    for files in allsnps:
+
+        encoding = ["1","2","3"]
+        activationFunctions = ["relu"]
+        ddropout = [0.2]
+        optimizer = ["Adam"]
+        batchsize = [50,100]
+        epochsnumber = [100]
+        #validation = [0.2,0.3] 
+        if "_snps" not in files and "pv_" in files:
+            f = open(direc+os.sep+files+os.sep+"Result.txt", "w")
+            print(files)
+            f.write(str("Snps"+","+str(files)))     
+
+            for enc in encoding:
+                if os.path.exists("./"+direc+os.sep+files+os.sep+'ptrain.raw'):
+                    x_train = pd.read_csv("./"+direc+os.sep+files+os.sep+'ptrain.raw', sep="\s+")
+                    x_test = pd.read_csv("./"+direc+os.sep+files+os.sep+'ptest.raw', sep="\s+") 
+                    y_train  = pd.read_csv(trainpath+'YRI.pheno', sep="\s+") 
+                    y_test= pd.read_csv(testpath+'YRI.pheno', sep="\s+")
+                    x_train =x_train.iloc[:,6:].values
+                    x_test  =x_test.iloc[:,6:].values
+                    y_train =y_train.iloc[:,2:].values
+                    y_test =y_test.iloc[:,2:].values
+                    y_train = to_categorical(y_train)
+                    y_test = to_categorical(y_test)
+                    
+                    n_xtrain = visualization(x_train,enc)
+                    n_xtest = visualization(x_test,enc)
+                    if n_xtrain =="not":
+                        continue
+                    f.write(str("Size"+","+str(n_xtest.shape[1])))  
+                    f.write("\n")
+                    f.write(str("Encoding"+","+enc))
+                    f.write("\n")
+            
+                    n_xtrain = n_xtrain.astype('float32')
+                    n_xtest = n_xtest.astype('float32')
+                    n_xtrain /= 255
+                    n_xtest /= 255
+            
+                    print("Encoding", enc)
+                    print("\n")
+                    print("File", files)
+                    print("\n")
+                    n_xtrain, n_xval, y_train, y_val= train_test_split(n_xtrain, y_train, test_size=0.2)
+                    for activation in activationFunctions:
+                        for drop in ddropout:
+                            for opt in optimizer:
+                                for b in batchsize:
+                                    for e in epochsnumber:
+                                    
+                                        model = Sequential()
+                                        model.add(Conv2D(32, kernel_size=(3, 3),activation=activation,input_shape=(n_xtrain.shape[1],n_xtrain.shape[2],1)))
+                                        model.add(MaxPooling2D(pool_size=(2, 2)))
+                                        model.add(Conv2D(64, (3, 3), activation=activation))
+                                        model.add(MaxPooling2D(pool_size=(2, 2)))
+                                        model.add(Flatten())
+                                        model.add(Dense(10, activation=activation))
+                                        model.add(Dropout(drop))
+                                        model.add(Dense(2, activation='softmax'))
+                                        model.compile(loss='binary_crossentropy', metrics=['accuracy'], optimizer=opt)
+                                        history = model.fit(n_xtrain, y_train,batch_size=b, epochs=e,validation_data=(n_xval, y_val),verbose=0)
+                                        print(activation,drop,opt,b,e)
+                                        print("\n")
+                                        
+                                        f.write("\n")
+                                        f.write(str(str(activation)+","+str(drop)+","+str(opt)+","+str(b)+","+str(e)))
+                                        x,y = model.evaluate(n_xtrain, y_train)
+                                        f.write("\n")
+                                        f.write(str("Training Accuracy"+str(y)))
+                                        f.write("\n")
+                                        x,y = model.evaluate(n_xtest, y_test)
+                                        f.write("Test Accuracy"+str(y))
+                                        f.write("\n")
+                                        x,y =model.evaluate(n_xval, y_val)
+                                        f.write("Validation Accuracy"+str(y))
+                                        f.write("\n")
+                                        
+                                        print( model.evaluate(n_xtrain, y_train))
+                                        print("\n")  
+                                        print( model.evaluate(n_xval, y_val))
+                                        print("\n")  
+                                                    
+                                        print( model.evaluate(n_xtest, y_test))
+                                        print("\n")
+                                        print(model.summary())
+                                        plt.imshow(n_xtrain[2])
+                                        plt.savefig("NormalizedOriginalImage.png")
+                                        layer_outputs = [layer.output for layer in model.layers[:4]]
+                                        
+                                        activation_model = models.Model(inputs=model.input, outputs=layer_outputs)
+                                        activations = activation_model.predict(n_xtrain)
+                                        first_layer_activation = activations[0]
+                                        plt.matshow(first_layer_activation[0, :, :, 3], cmap='viridis')
+                                        plt.savefig("2.png")
+                                        # Visualize filters.
+                                        visualizecnn(model,n_xtrain[0],activations)
+                                        
+                                        # Visualize the image regions.
+                                        visualizecnn2(model,x_train[2],n_xtrain[2],0,activations)
+                                        
+        f.close()

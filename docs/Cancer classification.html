@@ -1,0 +1,736 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+    <title>Cancer classification &#8212; Can we convert genotype sequences into images for cases/controls classification? 1.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css" />
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="cancer-classification">
+<h1>Cancer classification<a class="headerlink" href="#cancer-classification" title="Permalink to this headline">¶</a></h1>
+<p>We included only cross-validation + image augmentation with variation in picture sizes in a simple train machine learning model.</p>
+<section id="python-imports">
+<h2>python imports<a class="headerlink" href="#python-imports" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp"># </span>This section contains the list of modules and imports require to execute the code.
+
+<span class="gp"># </span>We ignored some warnings.
+<span class="go">import warnings</span>
+<span class="go">warnings.filterwarnings(&quot;ignore&quot;)</span>
+<span class="go">warnings.filterwarnings(&quot;ignore&quot;, message=&quot;libpng warning: iCCP: known incorrect sRGB profile&quot;)</span>
+<span class="go">warnings.filterwarnings(&quot;ignore&quot;, message=&quot;&#39;rm&#39; is not recognized as an&quot;)</span>
+
+<span class="gp"># </span>We run the code on the CPU, so the following <span class="m">2</span> lines disable GPU-based execution.
+<span class="go">import os</span>
+<span class="go">os.environ[&quot;CUDA_VISIBLE_DEVICES&quot;] = &quot;-1&quot;</span>
+
+<span class="go">from sklearn.metrics import confusion_matrix</span>
+<span class="go">from sklearn.metrics import accuracy_score</span>
+<span class="go">import seaborn as sn</span>
+<span class="go">import matplotlib.pyplot as plt</span>
+<span class="go">from pylab import rcParams</span>
+
+
+<span class="go">from sklearn.metrics import confusion_matrix</span>
+<span class="go">from sklearn.metrics import accuracy_score</span>
+<span class="go">import seaborn as sn</span>
+<span class="go">import matplotlib.pyplot as plt</span>
+<span class="go">from pylab import rcParams</span>
+<span class="go">from PIL import Image</span>
+<span class="go">import tensorflow as tf</span>
+<span class="go">import os</span>
+<span class="go">seed_value= 0</span>
+<span class="go">import os</span>
+<span class="go">os.environ[&#39;PYTHONHASHSEED&#39;]=str(seed_value)</span>
+<span class="go">import random</span>
+<span class="go">random.seed(seed_value)</span>
+<span class="go">import numpy as np</span>
+<span class="go">np.random.seed(seed_value)</span>
+<span class="go">import numpy as np</span>
+<span class="go">import tensorflow as tf</span>
+<span class="go">tf.random.set_seed(seed_value)</span>
+<span class="go">from tensorflow.keras.utils import to_categorical</span>
+<span class="go">from sklearn.model_selection import StratifiedKFold</span>
+<span class="go">from PIL import Image</span>
+<span class="go">from tensorflow.keras.preprocessing.image import ImageDataGenerator</span>
+<span class="go">from tensorflow.keras.models import Sequential</span>
+<span class="go">from tensorflow.keras.layers import Dense, Conv2D, Dropout, Flatten, MaxPooling2D</span>
+<span class="go">from tensorflow.keras import layers</span>
+<span class="go">from tensorflow.keras import optimizers</span>
+<span class="go">import numpy as np</span>
+<span class="go">import pandas as pd</span>
+<span class="go">from sklearn.model_selection import train_test_split</span>
+<span class="go">from tensorflow.keras.utils import to_categorical</span>
+<span class="go">import tensorflow as tf</span>
+
+<span class="gp"># </span>CV2 module is required to <span class="nb">read</span> PNG images.
+<span class="go">import cv2</span>
+<span class="go">from sklearn.preprocessing import LabelEncoder</span>
+<span class="go">from sklearn.preprocessing import OneHotEncoder</span>
+<span class="go">import sys</span>
+<span class="go">tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)</span>
+</pre></div>
+</div>
+</section>
+<section id="helper-functions">
+<h2>Helper functions<a class="headerlink" href="#helper-functions" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp"># </span>This section contains helper functions.
+
+<span class="gp"># </span>Plot the confusion matrix.
+<span class="go">def textplotting(model,x_test,y_test):</span>
+<span class="go">    y_pred = model.predict(x_test)</span>
+<span class="go">    y_pred = np.argmax(y_pred, axis=1)</span>
+<span class="go">    y_test = np.argmax(y_test, axis=1)</span>
+<span class="go">    y_pred = y_pred.reshape(-1,1)</span>
+<span class="go">    y_test = y_test.reshape(-1,1)</span>
+<span class="go">    print(confusion_matrix(y_test, y_pred))</span>
+<span class="go">    print(accuracy_score(y_test, y_pred))</span>
+
+<span class="gp"># </span>Plot the confusion matrix.
+<span class="go">def metric(best_model,x_train,y_train,x_test,y_test):</span>
+
+<span class="go">  y_pred = best_model.predict(x_test)</span>
+<span class="go">  sn.set(font_scale=2)</span>
+<span class="go">  rcParams[&#39;figure.figsize&#39;] = 7, 7</span>
+<span class="go">  confusion_matrix = pd.crosstab(y_test.argmax(axis=1), y_pred.argmax(axis=1), rownames=[&#39;Actual&#39;], colnames=[&#39;Predicted&#39;])</span>
+<span class="go">  sn.heatmap(confusion_matrix, annot=True)</span>
+
+<span class="go">  plt.savefig(&quot;Test.png&quot;)</span>
+<span class="go">  plt.clf()</span>
+<span class="go">  confusion_matrix = pd.crosstab(y_train.argmax(axis=1), best_model.predict(x_train).argmax(axis=1), rownames=[&#39;Actual&#39;], colnames=[&#39;Predicted&#39;])</span>
+<span class="go">  sn.heatmap(confusion_matrix, annot=True)</span>
+
+<span class="go">  plt.savefig(&quot;Train.png&quot;)</span>
+<span class="go">  plt.clf()</span>
+
+<span class="gp"># </span>Plot the parameter reduction.
+<span class="go">def simplot(parameterslist):</span>
+<span class="go">    plt.clf()</span>
+<span class="go">    sn.set(font_scale=1)</span>
+<span class="go">    rcParams[&#39;figure.figsize&#39;] = 10, 10</span>
+<span class="go">    plt.rcParams[&quot;axes.edgecolor&quot;] = &quot;black&quot;</span>
+<span class="go">    plt.rcParams[&quot;axes.linewidth&quot;] = 1</span>
+<span class="go">    lists = sorted(parameterslist.items())</span>
+<span class="go">    x, y = zip(*lists)</span>
+<span class="go">    plt.minorticks_on()</span>
+<span class="go">    fig,ax=plt.subplots()</span>
+<span class="go">    ax.plot(x, y, marker=&quot;o&quot;)</span>
+<span class="go">    ax.grid(True)</span>
+<span class="go">    ax.patch.set_edgecolor(&#39;black&#39;)</span>
+<span class="go">    ax.patch.set_linewidth(&#39;1&#39;)</span>
+<span class="go">    ax.set_xscale(&#39;log&#39;)</span>
+<span class="go">    ax.set_xlabel(&quot;Number of Parameters&quot;)</span>
+<span class="go">    ax.set_ylabel(&quot;Accuracy&quot;)</span>
+<span class="go">    plt.savefig(&quot;Parameters.png&quot;)</span>
+<span class="go">    plt.show()</span>
+
+<span class="gp"># </span>Save parameter reduction file <span class="k">in</span> a particular format.
+<span class="go">def saveLogfile(NeuronsInLayer1,NeuronsInLayer2,IntermediateAccuracy,IntermediateParameters):</span>
+<span class="go">    data = np.column_stack([NeuronsInLayer1,NeuronsInLayer2,IntermediateAccuracy,IntermediateParameters])</span>
+<span class="go">    datafile_path = &quot;./Logfile.txt&quot;</span>
+<span class="go">    np.savetxt(datafile_path , data, fmt=[&#39;%f&#39;,&#39;%d&#39;,&#39;%f&#39;,&#39;%d&#39;])</span>
+
+
+<span class="gp"># </span>This segment is used to place images <span class="k">in</span> specific directories.
+<span class="go">def makedirectory(name,x_train,y_train,x_test, y_test,x_val, y_val):</span>
+<span class="go">    base_dir = &#39;./fold&#39;+str(name)</span>
+<span class="go">    if not os.path.isdir(base_dir):</span>
+<span class="go">        os.mkdir(base_dir)</span>
+
+
+<span class="go">    train_dir = os.path.join(base_dir, &#39;train&#39;)</span>
+<span class="go">    if not os.path.isdir(train_dir):</span>
+<span class="go">        os.mkdir(train_dir)</span>
+
+
+<span class="go">    validation_dir = os.path.join(base_dir, &#39;validation&#39;)</span>
+<span class="go">    if not os.path.isdir(validation_dir):</span>
+<span class="go">        os.mkdir(validation_dir)</span>
+
+
+<span class="go">    test_dir = os.path.join(base_dir, &#39;test&#39;)</span>
+<span class="go">    if not os.path.isdir(test_dir):</span>
+<span class="go">        os.mkdir(test_dir)</span>
+
+
+
+<span class="gp">    # </span>Make a folder <span class="k">for</span> train,test, and validation <span class="nb">set</span> <span class="k">for</span> each category.
+<span class="go">    for loop in folders:</span>
+<span class="go">         temptrain = os.path.join(train_dir, loop)</span>
+<span class="go">         if not os.path.isdir(temptrain):</span>
+<span class="go">             os.mkdir(temptrain)</span>
+<span class="go">         tempvalid = os.path.join(validation_dir, loop)</span>
+<span class="go">         if not os.path.isdir(tempvalid):</span>
+<span class="go">             os.mkdir(tempvalid)</span>
+<span class="go">         temptest = os.path.join(test_dir, loop)</span>
+
+<span class="go">         if not os.path.isdir(temptest):</span>
+<span class="go">             os.mkdir(temptest)</span>
+
+<span class="go">         for loop2 in range(0,len(y_train)):</span>
+<span class="go">            if y_train[loop2]==loop:</span>
+<span class="go">                im = Image.fromarray(x_train[loop2])</span>
+<span class="go">                im.save(temptrain+os.sep+str(loop2)+&quot;.jpeg&quot;)</span>
+<span class="go">         for loop2 in range(0,len(y_test)):</span>
+<span class="go">            if y_test[loop2]==loop:</span>
+<span class="go">                im = Image.fromarray(x_test[loop2])</span>
+<span class="go">                im.save(temptest+os.sep+str(loop2)+&quot;.jpeg&quot;)</span>
+<span class="go">         for loop2 in range(0,len(y_val)):</span>
+<span class="go">            if y_val[loop2]==loop:</span>
+<span class="go">                im = Image.fromarray(x_val[loop2])</span>
+<span class="go">                im.save(tempvalid+os.sep+str(loop2)+&quot;.jpeg&quot;)</span>
+
+<span class="gp"># </span>Read images
+<span class="go">def load_images_from_folder(folder,shape):</span>
+<span class="go">    images = []</span>
+<span class="go">    for filename in os.listdir(folder):</span>
+<span class="go">        img = cv2.imread(os.path.join(folder, filename))</span>
+<span class="go">        if img is not None:</span>
+<span class="go">            img = cv2.resize(img, (shape, shape))</span>
+<span class="go">            images.append(img)</span>
+
+<span class="go">    return images</span>
+</pre></div>
+</div>
+</section>
+<section id="step-1-train-the-model">
+<h2>Step 1 - Train the model.<a class="headerlink" href="#step-1-train-the-model" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp"> # </span>The folders <span class="k">in</span> which images are placed.
+<span class="go">folders = [</span>
+<span class="go">   &#39;ADI&#39;,</span>
+<span class="go">   &#39;BACK&#39;,</span>
+<span class="go">      &#39;DEB&#39;,</span>
+<span class="go">   &#39;LYM&#39;,</span>
+<span class="go">      &#39;MUC&#39;,</span>
+<span class="go">   &#39;MUS&#39;,</span>
+<span class="go">      &#39;NORM&#39;,</span>
+<span class="go">   &#39;STR&#39;,</span>
+<span class="go">      &#39;TUM&#39;,</span>
+<span class="go">]</span>
+
+
+
+<span class="go"> label_encoder = LabelEncoder()</span>
+<span class="go"> enc = OneHotEncoder(handle_unknown=&#39;ignore&#39;)</span>
+
+<span class="gp"> # </span>Any number of image generators can be specified and used, but we used <span class="m">4</span> different image augmentation architectures.
+<span class="go"> gen=[1,2,3,4]</span>
+
+<span class="gp"> # </span>Images can be reshaped to various sizes to reduce the training <span class="nb">time</span> and neural network size.
+<span class="go"> shapes = [50,100,200]</span>
+
+
+<span class="gp"> # </span>For each shape
+<span class="go"> for shape in shapes:</span>
+<span class="go">   print(&quot;Shape:&quot;,shape)</span>
+<span class="go">   X = load_images_from_folder(folders[0],shape)</span>
+<span class="go">   Y = [folders[0]]*len(X)</span>
+<span class="go">   cat = 1</span>
+<span class="go">   for loop in range(1,len(folders)):</span>
+<span class="go">      print(&quot;Processing : &quot;,folders[loop])</span>
+<span class="go">      tempX = load_images_from_folder(folders[loop],shape)</span>
+<span class="go">      tempY = [folders[loop]]*len(tempX)</span>
+<span class="go">      Y = Y + tempY</span>
+<span class="go">      X = X + tempX</span>
+
+<span class="go">   X = np.array(X)</span>
+<span class="go">   Y= np.array(Y)</span>
+<span class="go">   skf = StratifiedKFold(n_splits=5)</span>
+<span class="go">   skf.get_n_splits(X, Y)</span>
+<span class="go">   fold_no = 1</span>
+<span class="go">   acc_per_fold = {}</span>
+<span class="go">   loss_per_fold = {}</span>
+<span class="go">   input_shape = (shape , shape , 3)</span>
+
+<span class="gp">   # </span>For cross validation
+<span class="go">   for train_index, test_index in skf.split(X, Y):</span>
+<span class="go">      x_train, x_test = X[train_index], X[test_index]</span>
+<span class="go">      y_train, y_test = Y[train_index], Y[test_index]</span>
+<span class="go">      x_train, x_val, y_train, y_val = train_test_split(x_train, y_train, test_size=0.1, random_state=1)</span>
+<span class="go">      makedirectory(str(fold_no)+&quot;_&quot;+str(shape),x_train,y_train,x_test, y_test,x_val, y_val)</span>
+<span class="go">      train_dir = os.path.join(&quot;fold&quot;+str(fold_no)+&quot;_&quot;+str(shape), &#39;train&#39;)</span>
+<span class="go">      validation_dir = os.path.join(&quot;fold&quot;+str(fold_no)+&quot;_&quot;+str(shape), &#39;validation&#39;)</span>
+<span class="go">      test_dir = os.path.join(&quot;fold&quot;+str(fold_no)+&quot;_&quot;+str(shape), &#39;test&#39;)</span>
+<span class="go">      y_train = to_categorical(label_encoder.fit_transform(y_train))</span>
+<span class="go">      y_test = to_categorical(label_encoder.fit_transform(y_test))</span>
+<span class="go">      y_val = to_categorical(label_encoder.fit_transform(y_val))</span>
+
+<span class="go">      model = Sequential()</span>
+<span class="go">      model.add(Conv2D(32, (3, 3), activation=&quot;relu&quot;, input_shape=input_shape))</span>
+<span class="go">      model.add(MaxPooling2D(pool_size = (2, 2)))</span>
+<span class="go">      model.add(Conv2D(32, (3, 3), activation=&quot;relu&quot;, input_shape=input_shape))</span>
+<span class="go">      model.add(MaxPooling2D(pool_size = (2, 2)))</span>
+<span class="go">      model.add(Conv2D(32, (3, 3), activation=&quot;relu&quot;, input_shape=input_shape))</span>
+<span class="go">      model.add(MaxPooling2D(pool_size = (2, 2)))</span>
+<span class="go">      model.add(Conv2D(64, (3, 3), activation=&quot;relu&quot;, input_shape=input_shape))</span>
+<span class="go">      model.add(MaxPooling2D(pool_size = (2, 2)))</span>
+<span class="gp">      #</span>model.add<span class="o">(</span>Conv2D<span class="o">(</span><span class="m">64</span>, <span class="o">(</span><span class="m">3</span>, <span class="m">3</span><span class="o">)</span>, <span class="nv">activation</span><span class="o">=</span><span class="s2">&quot;relu&quot;</span>, <span class="nv">input_shape</span><span class="o">=</span>input_shape<span class="o">))</span>
+<span class="gp">      #</span>model.add<span class="o">(</span>MaxPooling2D<span class="o">(</span><span class="nv">pool_size</span> <span class="o">=</span> <span class="o">(</span><span class="m">2</span>, <span class="m">2</span><span class="o">)))</span>
+<span class="gp">      # </span>Use the best number of neurons <span class="k">for</span> the first layer <span class="k">in</span> this layer obtained from the previous step.
+<span class="gp">      #</span>model.add<span class="o">(</span>Conv2D<span class="o">(</span><span class="m">32</span>, <span class="nv">kernel_size</span><span class="o">=(</span><span class="m">3</span>,3<span class="o">)</span>, <span class="nv">input_shape</span><span class="o">=</span>input_shape<span class="o">))</span>
+<span class="gp">      #</span>model.add<span class="o">(</span>Conv2D<span class="o">(</span><span class="m">64</span>, <span class="nv">kernel_size</span><span class="o">=(</span><span class="m">3</span>,3<span class="o">)))</span>
+<span class="gp">      # </span>Use the best number of neurons <span class="k">for</span> the second layer <span class="k">in</span> this layer obtained from the previous step.
+<span class="go">      model.add(MaxPooling2D(pool_size=(2, 2)))</span>
+<span class="go">      model.add(Flatten())</span>
+<span class="go">      model.add(Dense(128, activation=tf.nn.relu))</span>
+<span class="go">      model.add(Dropout(0.2))</span>
+<span class="go">      model.add(Dense(50, activation=tf.nn.relu))</span>
+<span class="go">      model.add(Dropout(0.2))</span>
+<span class="go">      model.add(Dense(20, activation=tf.nn.relu))</span>
+<span class="go">      model.add(Dropout(0.2))</span>
+<span class="go">      model.add(Dense(len(folders),activation=tf.nn.softmax))</span>
+
+<span class="go">      param = model.count_params()</span>
+
+<span class="gp">      # </span>For each generator
+<span class="go">      for selectgen in gen:</span>
+<span class="go">         if selectgen==1:</span>
+<span class="go">            train_datagen = ImageDataGenerator(</span>
+<span class="go">            rescale=1./255)</span>
+<span class="go">            test_datagen = ImageDataGenerator(rescale=1./255)</span>
+<span class="go">         elif selectgen==2:</span>
+<span class="go">            train_datagen = ImageDataGenerator(</span>
+<span class="go">            rescale=1./255,</span>
+<span class="go">            rotation_range=40,</span>
+<span class="go">            brightness_range=[0.2,1.0],</span>
+<span class="go">            horizontal_flip=True,</span>
+<span class="go">            vertical_flip=True,</span>
+<span class="go">            fill_mode=&#39;nearest&#39;)</span>
+<span class="go">            test_datagen = ImageDataGenerator(rescale=1./255)</span>
+<span class="go">         elif selectgen==3:</span>
+<span class="go">            train_datagen = ImageDataGenerator(</span>
+<span class="go">            rescale=1./255,</span>
+<span class="go">            rotation_range=40,</span>
+<span class="go">            featurewise_center=True,</span>
+<span class="go">            featurewise_std_normalization=True,</span>
+<span class="go">            brightness_range=[0.2,1.0],</span>
+<span class="go">            horizontal_flip=True,</span>
+<span class="go">            vertical_flip=True,</span>
+<span class="go">            fill_mode=&#39;nearest&#39;)</span>
+<span class="go">            test_datagen = ImageDataGenerator(rescale=1./255)</span>
+<span class="go">         else:</span>
+<span class="go">            train_datagen = ImageDataGenerator(</span>
+<span class="go">            rescale=1./255,</span>
+<span class="go">            rotation_range=40,</span>
+<span class="go">            width_shift_range=0.2,</span>
+<span class="go">            height_shift_range=0.2,</span>
+<span class="go">            shear_range=0.2,</span>
+<span class="go">            featurewise_center=True,</span>
+<span class="go">            featurewise_std_normalization=True,</span>
+<span class="go">            zoom_range=0.2,</span>
+<span class="go">            brightness_range=[0.2,1.0],</span>
+<span class="go">            horizontal_flip=True,</span>
+<span class="go">            vertical_flip=True,</span>
+<span class="go">            fill_mode=&#39;nearest&#39;)</span>
+<span class="go">            test_datagen = ImageDataGenerator(rescale=1./255)</span>
+
+
+<span class="go">         train_generator = train_datagen.flow_from_directory(</span>
+<span class="go">         train_dir,</span>
+<span class="go">         target_size=(shape , shape ),</span>
+<span class="go">         batch_size=batch_size,</span>
+<span class="go">         class_mode=&#39;categorical&#39;)</span>
+
+<span class="go">         validation_generator = test_datagen.flow_from_directory(</span>
+<span class="go">         validation_dir,</span>
+<span class="go">         target_size=(shape , shape ),</span>
+<span class="go">         batch_size=batch_size,</span>
+<span class="go">         class_mode=&#39;categorical&#39;)</span>
+
+<span class="go">         model.compile(optimizer=&#39;adam&#39;,</span>
+<span class="go">               loss=&#39;categorical_crossentropy&#39;,</span>
+<span class="go">               metrics=[&#39;accuracy&#39;])</span>
+
+<span class="go">         history = model.fit_generator(</span>
+<span class="go">               train_generator,</span>
+<span class="go">               steps_per_epoch=train_generator.n // batch_size,</span>
+<span class="go">               epochs=20,</span>
+<span class="go">               validation_data=validation_generator,</span>
+<span class="go">               validation_steps=validation_generator.n // batch_size,</span>
+<span class="go">               verbose=1)</span>
+
+<span class="gp">         #</span>print<span class="o">(</span><span class="s2">&quot;DONE&quot;</span><span class="o">)</span>
+<span class="go">         test_generator = test_datagen.flow_from_directory(</span>
+<span class="go">               test_dir,</span>
+<span class="go">               target_size=(shape , shape),</span>
+<span class="go">               batch_size=1 ,</span>
+<span class="go">               class_mode=&#39;categorical&#39;)</span>
+
+<span class="go">         test_loss, test_acc = model.evaluate_generator(test_generator, steps=50)</span>
+<span class="go">         print(&#39;test acc:&#39;, test_acc)</span>
+<span class="go">         if selectgen not in acc_per_fold:</span>
+<span class="go">            acc_per_fold[selectgen] = [test_acc * 100]</span>
+<span class="go">            loss_per_fold[selectgen] = [test_loss]</span>
+<span class="go">         else:</span>
+<span class="go">            acc_per_fold[selectgen].append(test_acc * 100)</span>
+<span class="go">            loss_per_fold[selectgen].append(test_loss)</span>
+<span class="gp">      #</span>os.system<span class="o">(</span><span class="s2">&quot;rm -rf fold&quot;</span>+str<span class="o">(</span>fold_no<span class="o">)</span>+<span class="s2">&quot;_&quot;</span>+str<span class="o">(</span>shape<span class="o">))</span>
+<span class="go">      fold_no = fold_no + 1</span>
+
+<span class="gp">   # </span>For each generator, print the results <span class="k">for</span> each fold.
+<span class="go">   for g in gen:</span>
+<span class="go">      print(&quot;Generator&quot;,g)</span>
+<span class="go">      acc_per_foldt = acc_per_fold[g]</span>
+<span class="go">      loss_per_foldt = loss_per_fold[g]</span>
+<span class="go">      print(&#39;------------------------------------------------------------------------&#39;)</span>
+<span class="go">      print(&#39;Score per fold&#39;)</span>
+<span class="go">      for i in range(0, len(acc_per_foldt)):</span>
+<span class="go">         print(&#39;------------------------------------------------------------------------&#39;)</span>
+<span class="go">         print(f&#39;&gt; Fold {i+1} - Loss: {loss_per_foldt[i]} - Accuracy: {acc_per_foldt[i]}%&#39;)</span>
+<span class="go">      print(&#39;------------------------------------------------------------------------&#39;)</span>
+<span class="go">      print(&#39;Average scores for all folds:&#39;)</span>
+<span class="go">      print(f&#39;&gt; Accuracy: {np.mean(acc_per_foldt)} (+- {np.std(acc_per_foldt)})&#39;)</span>
+<span class="go">      print(f&#39;&gt; Loss: {np.mean(loss_per_foldt)}&#39;)</span>
+<span class="go">      print(&#39;------------------------------------------------------------------------&#39;)</span>
+</pre></div>
+</div>
+</section>
+<section id="step-2-convet-model-to-tflite-and-adddetadata">
+<h2>Step 2 - Convet Model to TFlite And AddDetadata<a class="headerlink" href="#step-2-convet-model-to-tflite-and-adddetadata" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">gen = [1]</span>
+<span class="go">shapes = [150]</span>
+<span class="go">for shape in shapes:</span>
+<span class="go">    X = load_images_from_folder(folders[0],shape)</span>
+<span class="go">    Y = [folders[0]]*len(X)</span>
+<span class="go">    cat = 1</span>
+<span class="go">    for loop in range(1,len(folders)):</span>
+<span class="go">         print(&quot;Processing : &quot;,folders[loop])</span>
+<span class="go">         tempX = load_images_from_folder(folders[loop],shape)</span>
+<span class="go">         tempY = [folders[loop]]*len(tempX)</span>
+<span class="go">         Y = Y + tempY</span>
+<span class="go">         X = X + tempX</span>
+<span class="go">    X = np.array(X)</span>
+<span class="go">    Y= np.array(Y)</span>
+<span class="go">    skf = StratifiedKFold(n_splits=5)</span>
+<span class="go">    input_shape = (shape , shape , 3)</span>
+<span class="go">    for selectgen in gen:</span>
+<span class="go">        batch_size=100</span>
+<span class="go">        acc_per_fold = []</span>
+<span class="go">        loss_per_fold = []</span>
+<span class="go">        fold_no = 0</span>
+<span class="go">        for train_index, test_index in skf.split(X, Y):</span>
+<span class="go">            x_train, x_test = X[train_index], X[test_index]</span>
+<span class="go">            y_train, y_test = Y[train_index], Y[test_index]</span>
+<span class="go">            x_train, x_val, y_train, y_val = train_test_split(x_train, y_train, test_size=0.3, random_state=1)</span>
+<span class="go">            makedirectory(str(fold_no)+&quot;_&quot;+str(shape),x_train,y_train,x_test, y_test,x_val, y_val)</span>
+<span class="go">            train_dir = os.path.join(&quot;fold&quot;+str(fold_no)+&quot;_&quot;+str(shape), &#39;train&#39;)</span>
+<span class="go">            validation_dir = os.path.join(&quot;fold&quot;+str(fold_no)+&quot;_&quot;+str(shape), &#39;validation&#39;)</span>
+<span class="go">            test_dir = os.path.join(&quot;fold&quot;+str(fold_no)+&quot;_&quot;+str(shape), &#39;test&#39;)</span>
+<span class="go">            y_train = to_categorical(label_encoder.fit_transform(y_train))</span>
+<span class="go">            y_test = to_categorical(label_encoder.fit_transform(y_test))</span>
+<span class="go">            y_val = to_categorical(label_encoder.fit_transform(y_val))</span>
+<span class="go">            mobile = tf.keras.applications.mobilenet.MobileNet()</span>
+
+<span class="gp">            #</span>print<span class="o">(</span><span class="s2">&quot;Shape  &quot;</span>,str<span class="o">(</span>shape<span class="o">))</span>
+<span class="go">            model = Sequential()</span>
+<span class="go">            model.add(Conv2D(32, (3, 3), activation=&quot;relu&quot;, input_shape=input_shape))</span>
+<span class="go">            model.add(MaxPooling2D(pool_size = (2, 2)))</span>
+<span class="go">            model.add(Conv2D(32, (3, 3), activation=&quot;relu&quot;, input_shape=input_shape))</span>
+<span class="go">            model.add(MaxPooling2D(pool_size = (2, 2)))</span>
+<span class="go">            model.add(Conv2D(32, (3, 3), activation=&quot;relu&quot;, input_shape=input_shape))</span>
+<span class="go">            model.add(MaxPooling2D(pool_size = (2, 2)))</span>
+<span class="go">            model.add(Conv2D(64, (3, 3), activation=&quot;relu&quot;, input_shape=input_shape))</span>
+<span class="go">            model.add(MaxPooling2D(pool_size = (2, 2)))</span>
+<span class="gp">            #</span>model.add<span class="o">(</span>Conv2D<span class="o">(</span><span class="m">64</span>, <span class="o">(</span><span class="m">3</span>, <span class="m">3</span><span class="o">)</span>, <span class="nv">activation</span><span class="o">=</span><span class="s2">&quot;relu&quot;</span>, <span class="nv">input_shape</span><span class="o">=</span>input_shape<span class="o">))</span>
+<span class="gp">            #</span>model.add<span class="o">(</span>MaxPooling2D<span class="o">(</span><span class="nv">pool_size</span> <span class="o">=</span> <span class="o">(</span><span class="m">2</span>, <span class="m">2</span><span class="o">)))</span>
+<span class="gp">            # </span>Use the best number of neurons <span class="k">for</span> the first layer <span class="k">in</span> this layer obtained from the previous step.
+<span class="gp">            #</span>model.add<span class="o">(</span>Conv2D<span class="o">(</span><span class="m">32</span>, <span class="nv">kernel_size</span><span class="o">=(</span><span class="m">3</span>,3<span class="o">)</span>, <span class="nv">input_shape</span><span class="o">=</span>input_shape<span class="o">))</span>
+<span class="gp">            #</span>model.add<span class="o">(</span>Conv2D<span class="o">(</span><span class="m">64</span>, <span class="nv">kernel_size</span><span class="o">=(</span><span class="m">3</span>,3<span class="o">)))</span>
+<span class="gp">            # </span>Use the best number of neurons <span class="k">for</span> the second layer <span class="k">in</span> this layer obtained from the previous step.
+<span class="go">            model.add(MaxPooling2D(pool_size=(2, 2)))</span>
+<span class="go">            model.add(Flatten())</span>
+<span class="go">            model.add(Dense(128, activation=tf.nn.relu))</span>
+<span class="go">            model.add(Dropout(0.2))</span>
+<span class="go">            model.add(Dense(50, activation=tf.nn.relu))</span>
+<span class="go">            model.add(Dropout(0.2))</span>
+<span class="go">            model.add(Dense(20, activation=tf.nn.relu))</span>
+<span class="go">            model.add(Dropout(0.2))</span>
+<span class="go">            model.add(Dense(len(folders),activation=tf.nn.softmax))</span>
+
+<span class="go">            param = model.count_params()</span>
+
+
+<span class="go">            if selectgen==1:</span>
+<span class="go">               train_datagen = ImageDataGenerator(</span>
+<span class="go">               rescale=1./255)</span>
+<span class="go">               test_datagen = ImageDataGenerator(rescale=1./255)</span>
+<span class="go">            elif selectgen==2:</span>
+<span class="go">               train_datagen = ImageDataGenerator(</span>
+<span class="go">               rescale=1./255,</span>
+<span class="go">               rotation_range=40,</span>
+<span class="go">               brightness_range=[0.2,1.0],</span>
+<span class="go">               horizontal_flip=True,</span>
+<span class="go">               vertical_flip=True,</span>
+<span class="go">               fill_mode=&#39;nearest&#39;)</span>
+<span class="go">               test_datagen = ImageDataGenerator(rescale=1./255)</span>
+<span class="go">            elif selectgen==3:</span>
+<span class="go">               train_datagen = ImageDataGenerator(</span>
+<span class="go">               rescale=1./255,</span>
+<span class="go">               rotation_range=40,</span>
+<span class="go">               featurewise_center=True,</span>
+<span class="go">               featurewise_std_normalization=True,</span>
+<span class="go">               horizontal_flip=True,</span>
+<span class="go">               vertical_flip=True,</span>
+<span class="go">               fill_mode=&#39;nearest&#39;)</span>
+<span class="go">               test_datagen = ImageDataGenerator(rescale=1./255)</span>
+<span class="go">            else:</span>
+<span class="go">               train_datagen = ImageDataGenerator(</span>
+<span class="go">               rescale=1./255,</span>
+<span class="go">               rotation_range=40,</span>
+<span class="go">               width_shift_range=0.2,</span>
+<span class="go">               height_shift_range=0.2,</span>
+<span class="go">               shear_range=0.2,</span>
+<span class="go">               featurewise_center=True,</span>
+<span class="go">               featurewise_std_normalization=True,</span>
+<span class="go">               zoom_range=0.2,</span>
+<span class="go">               brightness_range=[0.2,1.0],</span>
+<span class="go">               horizontal_flip=True,</span>
+<span class="go">               vertical_flip=True,</span>
+<span class="go">               fill_mode=&#39;nearest&#39;)</span>
+<span class="go">               test_datagen = ImageDataGenerator(rescale=1./255)</span>
+
+
+<span class="go">            train_generator = train_datagen.flow_from_directory(</span>
+<span class="go">            train_dir,</span>
+<span class="go">            target_size=(shape , shape ),</span>
+<span class="go">            batch_size=batch_size,</span>
+<span class="go">            class_mode=&#39;categorical&#39;)</span>
+
+<span class="go">            validation_generator = test_datagen.flow_from_directory(</span>
+<span class="go">            validation_dir,</span>
+<span class="go">            target_size=(shape , shape ),</span>
+<span class="go">            batch_size=batch_size,</span>
+<span class="go">            class_mode=&#39;categorical&#39;)</span>
+
+<span class="go">            model.compile(optimizer=&#39;adam&#39;,</span>
+<span class="go">                loss=&#39;categorical_crossentropy&#39;,</span>
+<span class="go">                metrics=[&#39;accuracy&#39;])</span>
+
+<span class="go">            history = model.fit_generator(</span>
+<span class="go">                train_generator,</span>
+<span class="go">                steps_per_epoch=train_generator.n // batch_size,</span>
+<span class="go">                epochs=20,</span>
+<span class="go">                validation_data=validation_generator,</span>
+<span class="go">                validation_steps=validation_generator.n // batch_size,</span>
+<span class="go">                verbose=1)</span>
+
+<span class="gp">            #</span>print<span class="o">(</span><span class="s2">&quot;DONE&quot;</span><span class="o">)</span>
+<span class="go">            test_generator = test_datagen.flow_from_directory(</span>
+<span class="go">                test_dir,</span>
+<span class="go">                target_size=(shape , shape),</span>
+<span class="go">                batch_size=1 ,</span>
+<span class="go">                class_mode=&#39;categorical&#39;)</span>
+
+
+<span class="go">            textplotting(model,x_test/255,y_test)</span>
+<span class="go">            textplotting(model,x_train/255,y_train)</span>
+
+
+<span class="go">            test_loss, test_acc = model.evaluate_generator(test_generator, steps=test_generator.n // batch_size)</span>
+<span class="go">            print(test_acc)</span>
+<span class="go">            acc_per_fold.append(test_acc * 100)</span>
+<span class="go">            loss_per_fold.append(test_loss)</span>
+<span class="go">            fold_no = fold_no + 1</span>
+
+
+
+<span class="go">            def representative_dataset_gen():</span>
+<span class="go">                for _ in range(100):</span>
+<span class="go">                    img = train_generator.next()</span>
+<span class="go">                    yield [img[0]]</span>
+
+<span class="go">            model.save(&quot;alsome.hd5&quot;)</span>
+<span class="gp">            #</span><span class="c1">## In this step we will simply save the model</span>
+<span class="go">            model_save_path = &quot;./&quot;</span>
+<span class="go">            tf.saved_model.save(model, model_save_path)</span>
+<span class="go">            converter = tf.lite.TFLiteConverter.from_saved_model(model_save_path)</span>
+<span class="go">            converter.optimizations = [tf.lite.Optimize.DEFAULT]</span>
+<span class="go">            converter.representative_dataset = representative_dataset_gen</span>
+<span class="gp">            #</span>converter.target_spec.supported_ops <span class="o">=</span> <span class="o">[</span>tf.lite.OpsSet.TFLITE_BUILTINS_INT8<span class="o">]</span>
+<span class="go">            converter.experimental_new_converter = True</span>
+
+<span class="gp">            #</span>converter.target_spec.supported_types <span class="o">=</span> <span class="o">[</span>tf.uint8<span class="o">]</span>
+<span class="gp">            #</span>converter.inference_input_type <span class="o">=</span> tf.int8  <span class="c1"># or tf.uint8</span>
+<span class="gp">            #</span>converter.inference_output_type <span class="o">=</span> tf.uint8  <span class="c1"># or tf.uint8</span>
+
+<span class="go">            tflite_model = converter.convert()</span>
+<span class="go">            open(&quot;model.tflite&quot;, &quot;wb&quot;).write(tflite_model)</span>
+<span class="go">            import tensorflow_model_optimization as tfmot</span>
+
+<span class="go">            quantize_model = tfmot.quantization.keras.quantize_model</span>
+
+<span class="gp">            # </span>q_aware stands <span class="k">for</span> <span class="k">for</span> quantization aware.
+<span class="go">            q_aware_model = quantize_model(model)</span>
+
+
+<span class="gp">            # </span><span class="sb">`</span>quantize_model<span class="sb">`</span> requires a recompile.
+<span class="go">            q_aware_model.compile(optimizer=&#39;adam&#39;,</span>
+<span class="go">                          loss=&#39;categorical_crossentropy&#39;,</span>
+<span class="go">                          metrics=[&#39;accuracy&#39;])</span>
+<span class="go">            history = q_aware_model.fit_generator(</span>
+<span class="go">                train_generator,</span>
+<span class="go">                steps_per_epoch=train_generator.n // batch_size,</span>
+<span class="go">                epochs=20,</span>
+<span class="go">                validation_data=validation_generator,</span>
+<span class="go">                validation_steps=validation_generator.n // batch_size,</span>
+<span class="go">                verbose=1)</span>
+<span class="go">            q_aware_model.summary()</span>
+<span class="go">            _, baseline_model_accuracy = model.evaluate(x_test/255, y_test, verbose=0)</span>
+
+<span class="go">            _, q_aware_model_accuracy = q_aware_model.evaluate(x_test/255, y_test, verbose=0)</span>
+<span class="go">            print(&#39;Baseline test accuracy:&#39;, baseline_model_accuracy)</span>
+<span class="go">            print(&#39;Quant test accuracy:&#39;, q_aware_model_accuracy)</span>
+<span class="go">            textplotting(q_aware_model,x_test/255,y_test)</span>
+<span class="go">            textplotting(q_aware_model,x_train/255,y_train)</span>
+<span class="go">            q_aware_model.save(&quot;qalsome.hd5&quot;)</span>
+<span class="gp">            #</span><span class="c1">## In this step we will simply save the model</span>
+<span class="go">            model_save_path = &quot;./&quot;</span>
+<span class="go">            tf.saved_model.save(q_aware_model, model_save_path)</span>
+<span class="go">            converter = tf.lite.TFLiteConverter.from_saved_model(model_save_path)</span>
+<span class="go">            tflite_model = converter.convert()</span>
+<span class="go">            open(&quot;qmodel.tflite&quot;, &quot;wb&quot;).write(tflite_model)</span>
+<span class="gp">            # </span>We can save any model <span class="k">for</span> the <span class="m">5</span> fold validation, so we <span class="nb">exit</span> the code after the training of the first fold.
+</pre></div>
+</div>
+</section>
+<section id="step-3-convet-model-to-tflite-and-adddetadata">
+<h2>Step 3 - Convet Model to TFlite And AddDetadata<a class="headerlink" href="#step-3-convet-model-to-tflite-and-adddetadata" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">import os</span>
+<span class="gp"># </span>Change values <span class="k">in</span> metadata_writer_for_image_classifier.py
+<span class="gp">#</span><span class="nv">_MODEL_INFO</span> <span class="o">=</span> <span class="o">{</span>
+<span class="gp">#    </span><span class="s2">&quot;model.tflite&quot;</span>:
+<span class="gp">#        </span>ModelSpecificInfo<span class="o">(</span>
+<span class="gp">#            </span><span class="nv">name</span><span class="o">=</span><span class="s2">&quot;model&quot;</span>,
+<span class="gp">#            </span><span class="nv">version</span><span class="o">=</span><span class="s2">&quot;v1&quot;</span>,
+<span class="gp">#            </span><span class="nv">image_width</span><span class="o">=</span><span class="m">100</span>,
+<span class="gp">#            </span><span class="nv">image_height</span><span class="o">=</span><span class="m">100</span>,
+<span class="gp">#            </span><span class="nv">image_min</span><span class="o">=</span><span class="m">0</span>,
+<span class="gp">#            </span><span class="nv">image_max</span><span class="o">=</span><span class="m">1</span>,
+<span class="gp">#            </span><span class="nv">mean</span><span class="o">=[</span><span class="m">0</span><span class="o">]</span>,
+<span class="gp">#            </span><span class="nv">std</span><span class="o">=[</span><span class="m">255</span><span class="o">]</span>,
+<span class="gp">#            </span><span class="nv">num_classes</span><span class="o">=</span><span class="m">9</span>,
+<span class="gp">#            </span><span class="nv">author</span><span class="o">=</span><span class="s2">&quot;Alpha&quot;</span><span class="o">)</span>
+<span class="gp">#</span><span class="o">}</span>
+
+
+<span class="gp"># </span>Change labels <span class="k">in</span> labels.txt file
+
+<span class="go">os.mkdir(&quot;Finalmodel&quot;)</span>
+<span class="go">os.system(&quot;python ./metadata_writer_for_image_classifier.py --model_file=model.tflite --label_file=labels.txt --export_directory=./Finalmodel&quot;)</span>
+</pre></div>
+</div>
+</section>
+<section id="step-4-make-android-application">
+<h2>Step 4 - Make Android Application<a class="headerlink" href="#step-4-make-android-application" title="Permalink to this headline">¶</a></h2>
+<p>Make Android Application - TensorFlow Lite</p>
+<p>The following picture shows the android studio, and we have to change the assets.</p>
+<p>Replace</p>
+<p>G:/Application/Cancer Application/Tensorflow Application/models/src/main/assets</p>
+<p>With</p>
+<p>Finalmodel/model and rename model with efficientnet-lite0-int8</p>
+<p>Open Android studio and open Image-Classificaion-master, build the application.</p>
+<p>Make Android Application - Flutter</p>
+<p>The following picture shows the android studio, and we have to change the assets.</p>
+<p>Replace</p>
+<p>G:/Application/Cancer Application/Cat-Dog-Classifier-main/assets</p>
+<p>With</p>
+<p>Finalmodel/qmodel and rename model with model_unquant</p>
+<p>Open Android studio and open Cat-Dog-Classifier-main, build the application.</p>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">Can we convert genotype sequences into images for cases/controls classification?</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="Download%20dataset%20or%20generate%20data.html">Download dataset or generate data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Divide%20Data.html">Divide Data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Pvalue.html">Pvalue</a></li>
+<li class="toctree-l1"><a class="reference internal" href="1DCNN.html">1DCNN</a></li>
+<li class="toctree-l1"><a class="reference internal" href="2DCNN.html">2DCNN</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2022, Muhammad Muneeb and Samuel F. Feng.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.4.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/Cancer classification.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

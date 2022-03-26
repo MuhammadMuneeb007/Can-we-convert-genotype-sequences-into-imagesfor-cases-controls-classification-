@@ -1,0 +1,19 @@
+.. Can we convert genotype sequences into images for cases/controls classification? master file, created by
+   sphinx-quickstart on Thu Sep 30 07:38:13 2021.
+   You can adapt this file completely to your liking, but it should at least
+   contain the root `toctree` directive.
+
+Welcome to "Can we convert genotype sequences into images for cases/controls classification?" documentation
+============================================================================================================================================================
+
+
+
+Content
+----------------
+
+.. toctree::
+   Download dataset or generate data
+   Divide Data
+   Pvalue
+   1DCNN
+   2DCNN

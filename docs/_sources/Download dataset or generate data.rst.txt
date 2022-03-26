@@ -1,0 +1,39 @@
+Download dataset or generate data
+=================================================
+ 
+Download dataset
+------------------------
+ 
+Download the dataset used for this study from `This Link <https://drive.google.com/drive/folders/19rOmpmwZM_k2fsIhr9WIb-lz5-MxskZa?usp=sharing>`_.
+ 
+It contains two folders.
+
+1. finalized (Contains files and code)
+2. generatedata (Contains dataset)
+
+Generate genotype data
+------------------------
+
+To generate a dataset using Hagpgen2 + PhenotypeSimulator, follow the instruction mentioned on  `This Link <https://muhammadmuneeb007.github.io/Benchmarking---Machine-learning-vs-PRS/Step%200%20-%20Generate%20Data.html#>`_.
+ 
+
+Following is the execution sequence after getting the dataset.
+--------------------------------------------------------------------------
+ 
+# Divide data into training and test sets.
+
+python dividedata.py 1
+
+# Generate Sub-datasets based on P-values
+python pvalue.py 1 5.05915e-50
+python pvalue.py 1 5.05915e-30
+python pvalue.py 1 5.05915e-10
+python pvalue.py 1 1
+
+
+# This file contains code to train 2D CNN. 
+python pmodel.py  1
+
+
+# This file contains code to train 1D CNN. 
+python pmodel2.py 1

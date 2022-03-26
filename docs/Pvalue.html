@@ -1,0 +1,144 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+    <title>Pvalue &#8212; Can we convert genotype sequences into images for cases/controls classification? 1.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css" />
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="1DCNN" href="1DCNN.html" />
+    <link rel="prev" title="Divide Data" href="Divide%20Data.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="pvalue">
+<h1>Pvalue<a class="headerlink" href="#pvalue" title="Permalink to this headline">¶</a></h1>
+<section id="pvalue-threshold">
+<h2>Pvalue threshold<a class="headerlink" href="#pvalue-threshold" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">directory = sys.argv[1]</span>
+
+<span class="gp"># </span>Read the QC GWAS.
+<span class="go">pvalues  = pd.read_csv(directory+os.sep+&quot;files/Data.QC.gz&quot;,compression=&#39;gzip&#39;,sep=&quot;\t&quot;)</span>
+<span class="go">print(pvalues.head())</span>
+
+
+<span class="gp"># </span>The selection of p-value is explained <span class="k">in</span> the manuscript. We started from the lower p-value threshold and <span class="k">then</span> moved to significant p-value thresholds.
+<span class="go">pvalue = float(sys.argv[2])</span>
+<span class="go">pvalues[&#39;P&#39;]=pd.to_numeric(pvalues[&#39;P&#39;],errors=&#39;coerce&#39;)</span>
+<span class="go">subpvalues = pvalues[pvalues[&#39;P&#39;]&lt;=float(sys.argv[2])]</span>
+
+<span class="gp"># </span>Make a directory <span class="k">in</span> which sub-dataset will be stored.
+<span class="go">if not os.path.isdir(directory+os.sep+&quot;pv_&quot;+str(float(sys.argv[2]))):</span>
+<span class="go">os.mkdir(directory+os.sep+&quot;pv_&quot;+str(float(sys.argv[2])))</span>
+
+<span class="go">subpvalues.to_csv(directory+os.sep+&quot;pv_&quot;+str(float(sys.argv[2]))+os.sep+str(float(sys.argv[2]))+&#39;.txt&#39;, columns=[&#39;SNP&#39;],index=False,header=False)</span>
+
+<span class="gp"># </span>Extract selected SNPs from the <span class="nb">test</span> set.
+<span class="go">os.system(&quot;./plink --bfile ./&quot;+directory+os.sep+&quot;test/test   --extract ./&quot;+directory+os.sep+&quot;pv_&quot;+str(float(sys.argv[2]))+os.sep+str(float(sys.argv[2]))+&quot;.txt --recodeA --out &quot;+directory+os.sep+&quot;pv_&quot;+str(float(sys.argv[2]))+os.sep+&quot;ptest&quot;)</span>
+
+
+<span class="gp"># </span>Extract selected SNPs from the training set.
+<span class="go">os.system(&quot;./plink --bfile ./&quot;+directory+os.sep+&quot;train/train   --extract ./&quot;+directory+os.sep+&quot;pv_&quot;+str(float(sys.argv[2]))+os.sep+str(float(sys.argv[2]))+&quot;.txt --recodeA --out &quot;+directory+os.sep+&quot;pv_&quot;+str(float(sys.argv[2]))+os.sep+&quot;ptrain&quot;)</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">Can we convert genotype sequences into images for cases/controls classification?</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="Download%20dataset%20or%20generate%20data.html">Download dataset or generate data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Divide%20Data.html">Divide Data</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Pvalue</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#pvalue-threshold">Pvalue threshold</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="1DCNN.html">1DCNN</a></li>
+<li class="toctree-l1"><a class="reference internal" href="2DCNN.html">2DCNN</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="Divide%20Data.html" title="previous chapter">Divide Data</a></li>
+      <li>Next: <a href="1DCNN.html" title="next chapter">1DCNN</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2022, Muhammad Muneeb and Samuel F. Feng.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.4.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/Pvalue.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

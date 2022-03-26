@@ -1,0 +1,455 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+    <title>2DCNN &#8212; Can we convert genotype sequences into images for cases/controls classification? 1.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css" />
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="1DCNN" href="1DCNN.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="dcnn">
+<h1>2DCNN<a class="headerlink" href="#dcnn" title="Permalink to this headline">¶</a></h1>
+<section id="python-imports">
+<h2>python imports<a class="headerlink" href="#python-imports" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">from __future__ import absolute_import, division, print_function</span>
+<span class="go">import argparse</span>
+<span class="go">from tensorflow.keras import Model, layers</span>
+<span class="go">import numpy as np</span>
+<span class="go">import math</span>
+<span class="go">import pandas as pd</span>
+<span class="go">from sklearn.preprocessing import StandardScaler</span>
+<span class="go">from numpy import genfromtxt</span>
+<span class="go">from sklearn import svm</span>
+<span class="go">from numpy import genfromtxt</span>
+<span class="go">import pandas as pd</span>
+<span class="go">import numpy as np</span>
+<span class="go">import matplotlib.pyplot as plt</span>
+<span class="go">import math</span>
+<span class="go">from sklearn.model_selection import train_test_split</span>
+<span class="go">from sklearn.model_selection import StratifiedKFold</span>
+<span class="go">from PIL import Image</span>
+<span class="go">from tensorflow.keras.preprocessing.image import ImageDataGenerator</span>
+<span class="go">from tensorflow.keras.models import Sequential</span>
+<span class="go">from tensorflow.keras.layers import Dense, Conv2D, Dropout, Flatten, MaxPooling2D</span>
+<span class="go">from tensorflow.keras import layers</span>
+<span class="go">from tensorflow.keras import optimizers</span>
+<span class="go">from sklearn.model_selection import train_test_split</span>
+<span class="go">from tensorflow.keras.utils import to_categorical</span>
+<span class="go">import tensorflow as tf</span>
+<span class="go">import matplotlib.pyplot as plt</span>
+<span class="go">from sklearn.preprocessing import StandardScaler</span>
+
+<span class="go">from sklearn.metrics import accuracy_score</span>
+<span class="go">from sklearn.metrics import confusion_matrix</span>
+<span class="go">import warnings</span>
+<span class="go">warnings.filterwarnings(&#39;ignore&#39;)</span>
+
+<span class="go">from datetime import datetime</span>
+<span class="go">from sklearn.model_selection import RandomizedSearchCV, GridSearchCV</span>
+<span class="go">from sklearn.metrics import roc_auc_score</span>
+<span class="go">from sklearn.model_selection import StratifiedKFold</span>
+<span class="go">scaler = StandardScaler()</span>
+<span class="go">import tensorflow.keras</span>
+<span class="go">from sklearn.metrics import precision_score, recall_score, accuracy_score</span>
+<span class="go">from tensorflow.keras.models import Sequential, load_model</span>
+<span class="go">from tensorflow.keras.layers import Dense, Dropout, Activation,ActivityRegularization</span>
+<span class="go">from tensorflow.keras.utils import to_categorical</span>
+<span class="go">from sklearn import metrics</span>
+<span class="go">import tensorflow as tf</span>
+<span class="go">from tensorflow.keras.layers import LSTM, GRU,Bidirectional</span>
+<span class="go">from sklearn import preprocessing</span>
+<span class="go">from tensorflow.keras.layers import Reshape</span>
+<span class="go">import seaborn as sn</span>
+<span class="go">import matplotlib.pyplot as plt</span>
+<span class="go">from pylab import rcParams</span>
+<span class="go">import sys</span>
+<span class="go">import os</span>
+<span class="go">from sklearn import tree, ensemble</span>
+<span class="go">from imblearn.under_sampling import RandomUnderSampler</span>
+<span class="go">from imblearn.pipeline import make_pipeline</span>
+<span class="go">from sklearn.metrics import roc_auc_score</span>
+
+
+<span class="go">def metric(name,best_model,x_train,y_train,x_test,y_test):</span>
+
+<span class="go">    y_pred = best_model.predict(x_test)</span>
+<span class="go">    sn.set(font_scale=2)</span>
+<span class="go">    rcParams[&#39;figure.figsize&#39;] = 7, 7</span>
+<span class="go">    confusion_matrix = pd.crosstab(y_test.argmax(axis=1), y_pred.argmax(axis=1), rownames=[&#39;Actual&#39;], colnames=[&#39;Predicted&#39;])</span>
+<span class="go">    sn.heatmap(confusion_matrix, annot=True)</span>
+
+<span class="go">    plt.savefig(args.path+os.sep+name+&quot;Test.png&quot;)</span>
+<span class="go">    plt.clf()</span>
+<span class="go">    confusion_matrix = pd.crosstab(y_train.argmax(axis=1), best_model.predict(x_train).argmax(axis=1), rownames=[&#39;Actual&#39;], colnames=[&#39;Predicted&#39;])</span>
+<span class="go">    sn.heatmap(confusion_matrix, annot=True)</span>
+
+<span class="go">    plt.savefig(args.path+os.sep+name+&quot;Train.png&quot;)</span>
+<span class="go">    plt.clf()</span>
+</pre></div>
+</div>
+</section>
+<section id="encoding-schemes">
+<h2>Encoding schemes<a class="headerlink" href="#encoding-schemes" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">def visualization(X_train,name):</span>
+<span class="go">    if name==&quot;1&quot;:</span>
+<span class="go">        endofimage = int(math.sqrt(X_train.shape[1]))**2</span>
+<span class="go">        if int(math.sqrt(X_train.shape[1]))&lt;20:</span>
+<span class="go">        return &quot;not&quot;</span>
+<span class="go">        X_train = X_train[:,0:endofimage]</span>
+<span class="go">        X_train = X_train.reshape(X_train.shape[0],int(math.sqrt(X_train.shape[1])),int(math.sqrt(X_train.shape[1])),1)</span>
+<span class="go">        return X_train</span>
+<span class="go">    if name==&quot;2&quot;:</span>
+<span class="go">        where_2 = np.where(X_train == 2)</span>
+<span class="go">        X_train[where_2] = 0</span>
+<span class="go">        endofimage = int(math.sqrt(X_train.shape[1]))**2</span>
+<span class="go">        if int(math.sqrt(X_train.shape[1]))&lt;20:</span>
+<span class="go">        return &quot;not&quot;</span>
+<span class="go">        X_train = X_train[:,0:endofimage]</span>
+<span class="go">        X_train = X_train.reshape(X_train.shape[0],int(math.sqrt(X_train.shape[1])),int(math.sqrt(X_train.shape[1])),1)</span>
+<span class="go">        return X_train</span>
+
+<span class="go">    if name==&quot;3&quot;:</span>
+<span class="go">        X_train = X_train.astype(int)</span>
+<span class="go">        where_2 = np.where(X_train == 2)</span>
+<span class="go">        X_train[where_2] = 0</span>
+
+<span class="go">        new_X_train = np.zeros(shape=(X_train.shape[0],int(X_train.shape[1]/8)))</span>
+<span class="go">        print(&quot;Eight pixel reduction&quot;,int(X_train.shape[1]/8))</span>
+<span class="go">        if int(X_train.shape[1]/8)&lt;8:</span>
+<span class="go">            return &quot;not&quot;</span>
+<span class="go">        for loop in range(0,len(new_X_train )):</span>
+<span class="go">            temp = X_train[loop,:]</span>
+<span class="go">            data2 = []</span>
+<span class="go">            for loop2 in range(0,int(X_train.shape[1]/8)):</span>
+<span class="go">                xx = list(temp[loop2*8:loop2*8+8])</span>
+<span class="go">                res = int(&quot;&quot;.join(str(x) for x in xx), 2)</span>
+<span class="go">                data2.append(res)</span>
+<span class="go">            new_X_train[loop,:] =np.array(data2)</span>
+
+<span class="go">        if new_X_train.shape[1]&lt;20:</span>
+<span class="go">            return &quot;not&quot;</span>
+<span class="go">        X_train = new_X_train.copy()</span>
+<span class="go">        endofimage = int(math.sqrt(X_train.shape[1]))**2</span>
+<span class="go">        X_train = X_train[:,0:endofimage]</span>
+<span class="go">        X_train = X_train.reshape(X_train.shape[0],int(math.sqrt(X_train.shape[1])),int(math.sqrt(X_train.shape[1])),1)</span>
+<span class="go">        if int(math.sqrt(X_train.shape[1]))&lt;20:</span>
+<span class="go">            return &quot;not&quot;</span>
+
+<span class="go">        print(&quot;Final shape reduction&quot;,int(X_train.shape[1]))</span>
+<span class="go">        return X_train</span>
+</pre></div>
+</div>
+</section>
+<section id="dcnn-visualization">
+<h2>2DCNN Visualization<a class="headerlink" href="#dcnn-visualization" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span># This function is used to visualize the 2DCNN layer.
+def visualizecnn(model, X,activations):
+    layer_names = []
+
+    # There are 4 2DCNN layers.
+    for layer in model.layers[:4]:
+        layer_names.append(layer.name)
+
+
+    images_per_row = 16
+
+    # Now let&#39;s display our feature maps
+    for layer_name, layer_activation in zip(layer_names, activations):
+        print(&quot;Layer Name: &quot;,layer_name)
+        # This is the number of features in the feature map
+        n_features = layer_activation.shape[-1]
+
+        # The feature map has shape (1, size, size, n_features)
+        size = layer_activation.shape[1]
+
+        # We will tile the activation channels in this matrix
+        n_cols = n_features // images_per_row
+        display_grid = np.zeros((size * n_cols, images_per_row * size))
+
+        # We&#39;ll tile each filter into this big horizontal grid
+        for col in range(n_cols):
+            for row in range(images_per_row):
+                channel_image = layer_activation[0,
+                                                :, :,
+                                                col * images_per_row + row]
+                # Post-process the feature to make it visually palatable
+                channel_image -= channel_image.mean()
+                channel_image /= channel_image.std()
+                channel_image *= 64
+                channel_image += 128
+                channel_image = np.clip(channel_image, 0, 255).astype(&#39;uint8&#39;)
+                display_grid[col * size : (col + 1) * size,
+                            row * size : (row + 1) * size] = channel_image
+
+        # Display the grid
+        scale = 1. / size
+        plt.figure(figsize=(scale * display_grid.shape[1],
+                            scale * display_grid.shape[0]))
+        plt.title(layer_name)
+        plt.grid(False)
+        plt.imshow(display_grid, aspect=&#39;auto&#39;, cmap=&#39;viridis&#39;)
+
+        # Save the layer visualization.
+        plt.savefig(layer_name+&quot;.png&quot;)
+
+
+from tensorflow.keras import backend as K
+import tensorflow as tf
+tf.compat.v1.disable_eager_execution()
+
+# This function is used to find the regions in the image which cause a particular person a case or control.
+# caseorcontrol variable should be 0 for control or 1 for the case.
+def visualizecnn2(model,Original, X,caseorcontrol,activations):
+    import cv2
+    X = X.reshape(1,X.shape[0],X.shape[1],X.shape[2])
+    preds = model.predict(X)
+
+    model_output = model.output[:, caseorcontrol]
+    last_conv_layer = model.get_layer(&#39;conv2d_1&#39;)
+    grads = K.gradients(model_output, last_conv_layer.output)[0]
+    pooled_grads = K.mean(grads, axis=(0, 1, 2))
+    iterate = K.function([model.input], [pooled_grads, last_conv_layer.output[0]])
+    pooled_grads_value, conv_layer_output_value = iterate([X])
+    for i in range(64):
+        conv_layer_output_value[:, :, i] *= pooled_grads_value[i]
+
+    heatmap = np.mean(conv_layer_output_value, axis=-1)
+
+    heatmap = np.maximum(heatmap, 0)
+    heatmap /= np.max(heatmap)
+    plt.matshow(heatmap)
+    plt.imshow(heatmap)
+    plt.savefig(&#39;heatmaporiginal.png&#39;)
+    heatmap = cv2.resize(heatmap, (X.shape[2], X.shape[1]))
+    heatmap = np.uint8(255 * heatmap)
+    Original = Original.reshape(X.shape[1],X.shape[2])
+    superimposed_img = heatmap * 0.4 + Original
+    plt.matshow(superimposed_img)
+    plt.savefig(&quot;heatmapsuperimposed_img.png&quot;)
+</pre></div>
+</div>
+</section>
+<section id="dcnn-machine-learning-model">
+<h2>2DCNN Machine Learning Model<a class="headerlink" href="#dcnn-machine-learning-model" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">import pandas as pd</span>
+<span class="go">from os import makedirs</span>
+
+<span class="go">direc = sys.argv[1]</span>
+<span class="go">trainpath= &quot;./&quot;+direc+os.sep+&quot;train/&quot;</span>
+<span class="go">testpath = &quot;./&quot;+direc+os.sep+&quot;test/&quot;</span>
+
+
+
+<span class="go">allsnps = os.listdir(&quot;./&quot;+direc)</span>
+<span class="go">from xgboost import XGBClassifier</span>
+<span class="go">for files in allsnps:</span>
+
+<span class="go">    encoding = [&quot;1&quot;,&quot;2&quot;,&quot;3&quot;]</span>
+<span class="go">    activationFunctions = [&quot;relu&quot;]</span>
+<span class="go">    ddropout = [0.2]</span>
+<span class="go">    optimizer = [&quot;Adam&quot;]</span>
+<span class="go">    batchsize = [50,100]</span>
+<span class="go">    epochsnumber = [100]</span>
+<span class="gp">    #</span><span class="nv">validation</span> <span class="o">=</span> <span class="o">[</span><span class="m">0</span>.2,0.3<span class="o">]</span>
+<span class="go">    if &quot;_snps&quot; not in files and &quot;pv_&quot; in files:</span>
+<span class="go">        f = open(direc+os.sep+files+os.sep+&quot;Result.txt&quot;, &quot;w&quot;)</span>
+<span class="go">        print(files)</span>
+<span class="go">        f.write(str(&quot;Snps&quot;+&quot;,&quot;+str(files)))</span>
+
+<span class="go">        for enc in encoding:</span>
+<span class="go">            if os.path.exists(&quot;./&quot;+direc+os.sep+files+os.sep+&#39;ptrain.raw&#39;):</span>
+<span class="go">                x_train = pd.read_csv(&quot;./&quot;+direc+os.sep+files+os.sep+&#39;ptrain.raw&#39;, sep=&quot;\s+&quot;)</span>
+<span class="go">                x_test = pd.read_csv(&quot;./&quot;+direc+os.sep+files+os.sep+&#39;ptest.raw&#39;, sep=&quot;\s+&quot;)</span>
+<span class="go">                y_train  = pd.read_csv(trainpath+&#39;YRI.pheno&#39;, sep=&quot;\s+&quot;)</span>
+<span class="go">                y_test= pd.read_csv(testpath+&#39;YRI.pheno&#39;, sep=&quot;\s+&quot;)</span>
+<span class="go">                x_train =x_train.iloc[:,6:].values</span>
+<span class="go">                x_test  =x_test.iloc[:,6:].values</span>
+<span class="go">                y_train =y_train.iloc[:,2:].values</span>
+<span class="go">                y_test =y_test.iloc[:,2:].values</span>
+<span class="go">                y_train = to_categorical(y_train)</span>
+<span class="go">                y_test = to_categorical(y_test)</span>
+
+<span class="go">                n_xtrain = visualization(x_train,enc)</span>
+<span class="go">                n_xtest = visualization(x_test,enc)</span>
+<span class="go">                if n_xtrain ==&quot;not&quot;:</span>
+<span class="go">                    continue</span>
+<span class="go">                f.write(str(&quot;Size&quot;+&quot;,&quot;+str(n_xtest.shape[1])))</span>
+<span class="go">                f.write(&quot;\n&quot;)</span>
+<span class="go">                f.write(str(&quot;Encoding&quot;+&quot;,&quot;+enc))</span>
+<span class="go">                f.write(&quot;\n&quot;)</span>
+
+<span class="go">                n_xtrain = n_xtrain.astype(&#39;float32&#39;)</span>
+<span class="go">                n_xtest = n_xtest.astype(&#39;float32&#39;)</span>
+<span class="go">                n_xtrain /= 255</span>
+<span class="go">                n_xtest /= 255</span>
+
+<span class="go">                print(&quot;Encoding&quot;, enc)</span>
+<span class="go">                print(&quot;\n&quot;)</span>
+<span class="go">                print(&quot;File&quot;, files)</span>
+<span class="go">                print(&quot;\n&quot;)</span>
+<span class="go">                n_xtrain, n_xval, y_train, y_val= train_test_split(n_xtrain, y_train, test_size=0.2)</span>
+<span class="go">                for activation in activationFunctions:</span>
+<span class="go">                    for drop in ddropout:</span>
+<span class="go">                        for opt in optimizer:</span>
+<span class="go">                            for b in batchsize:</span>
+<span class="go">                                for e in epochsnumber:</span>
+
+<span class="go">                                    model = Sequential()</span>
+<span class="go">                                    model.add(Conv2D(32, kernel_size=(3, 3),activation=activation,input_shape=(n_xtrain.shape[1],n_xtrain.shape[2],1)))</span>
+<span class="go">                                    model.add(MaxPooling2D(pool_size=(2, 2)))</span>
+<span class="go">                                    model.add(Conv2D(64, (3, 3), activation=activation))</span>
+<span class="go">                                    model.add(MaxPooling2D(pool_size=(2, 2)))</span>
+<span class="go">                                    model.add(Flatten())</span>
+<span class="go">                                    model.add(Dense(10, activation=activation))</span>
+<span class="go">                                    model.add(Dropout(drop))</span>
+<span class="go">                                    model.add(Dense(2, activation=&#39;softmax&#39;))</span>
+<span class="go">                                    model.compile(loss=&#39;binary_crossentropy&#39;, metrics=[&#39;accuracy&#39;], optimizer=opt)</span>
+<span class="go">                                    history = model.fit(n_xtrain, y_train,batch_size=b, epochs=e,validation_data=(n_xval, y_val),verbose=0)</span>
+<span class="go">                                    print(activation,drop,opt,b,e)</span>
+<span class="go">                                    print(&quot;\n&quot;)</span>
+
+<span class="go">                                    f.write(&quot;\n&quot;)</span>
+<span class="go">                                    f.write(str(str(activation)+&quot;,&quot;+str(drop)+&quot;,&quot;+str(opt)+&quot;,&quot;+str(b)+&quot;,&quot;+str(e)))</span>
+<span class="go">                                    x,y = model.evaluate(n_xtrain, y_train)</span>
+<span class="go">                                    f.write(&quot;\n&quot;)</span>
+<span class="go">                                    f.write(str(&quot;Training Accuracy&quot;+str(y)))</span>
+<span class="go">                                    f.write(&quot;\n&quot;)</span>
+<span class="go">                                    x,y = model.evaluate(n_xtest, y_test)</span>
+<span class="go">                                    f.write(&quot;Test Accuracy&quot;+str(y))</span>
+<span class="go">                                    f.write(&quot;\n&quot;)</span>
+<span class="go">                                    x,y =model.evaluate(n_xval, y_val)</span>
+<span class="go">                                    f.write(&quot;Validation Accuracy&quot;+str(y))</span>
+<span class="go">                                    f.write(&quot;\n&quot;)</span>
+
+<span class="go">                                    print( model.evaluate(n_xtrain, y_train))</span>
+<span class="go">                                    print(&quot;\n&quot;)</span>
+<span class="go">                                    print( model.evaluate(n_xval, y_val))</span>
+<span class="go">                                    print(&quot;\n&quot;)</span>
+
+<span class="go">                                    print( model.evaluate(n_xtest, y_test))</span>
+<span class="go">                                    print(&quot;\n&quot;)</span>
+<span class="go">                                    print(model.summary())</span>
+<span class="go">                                    plt.imshow(n_xtrain[2])</span>
+<span class="go">                                    plt.savefig(&quot;NormalizedOriginalImage.png&quot;)</span>
+<span class="go">                                    layer_outputs = [layer.output for layer in model.layers[:4]]</span>
+
+<span class="go">                                    activation_model = models.Model(inputs=model.input, outputs=layer_outputs)</span>
+<span class="go">                                    activations = activation_model.predict(n_xtrain)</span>
+<span class="go">                                    first_layer_activation = activations[0]</span>
+<span class="go">                                    plt.matshow(first_layer_activation[0, :, :, 3], cmap=&#39;viridis&#39;)</span>
+<span class="go">                                    plt.savefig(&quot;2.png&quot;)</span>
+<span class="gp">                                    # </span>Visualize filters.
+<span class="go">                                    visualizecnn(model,n_xtrain[0],activations)</span>
+
+<span class="gp">                                    # </span>Visualize the image regions.
+<span class="go">                                    visualizecnn2(model,x_train[2],n_xtrain[2],0,activations)</span>
+
+<span class="go">    f.close()</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">Can we convert genotype sequences into images for cases/controls classification?</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="Download%20dataset%20or%20generate%20data.html">Download dataset or generate data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Divide%20Data.html">Divide Data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Pvalue.html">Pvalue</a></li>
+<li class="toctree-l1"><a class="reference internal" href="1DCNN.html">1DCNN</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">2DCNN</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#python-imports">python imports</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#encoding-schemes">Encoding schemes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#dcnn-visualization">2DCNN Visualization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#dcnn-machine-learning-model">2DCNN Machine Learning Model</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="1DCNN.html" title="previous chapter">1DCNN</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2022, Muhammad Muneeb and Samuel F. Feng.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.4.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/2DCNN.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

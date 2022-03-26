@@ -1,0 +1,276 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+    <title>Divide Data &#8212; Can we convert genotype sequences into images for cases/controls classification? 1.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css" />
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Pvalue" href="Pvalue.html" />
+    <link rel="prev" title="Download dataset or generate data" href="Download%20dataset%20or%20generate%20data.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="divide-data">
+<h1>Divide Data<a class="headerlink" href="#divide-data" title="Permalink to this headline">¶</a></h1>
+<section id="python-divide-data">
+<h2>python Divide Data<a class="headerlink" href="#python-divide-data" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">import pandas as pd</span>
+<span class="go">import os</span>
+<span class="go">from sklearn.model_selection import train_test_split</span>
+<span class="go">import sys</span>
+
+<span class="go">def reformat():</span>
+<span class="go">pass</span>
+
+
+<span class="go">def subsubsection(pheno,direc,name):</span>
+<span class="go">    case = pheno.loc[pheno[&quot;phenotype&quot;]==1]</span>
+<span class="go">    control = pheno.loc[pheno[&quot;phenotype&quot;]==0]</span>
+<span class="go">    case.to_csv(direc+os.sep+name+&quot;_case_id.txt&quot;, index=False, columns=[&#39;user_id&#39;],header=False)</span>
+<span class="go">    control.to_csv(direc+os.sep+name+&quot;_control_id.txt&quot;, index=False, columns=[&#39;user_id&#39;],header=False)</span>
+<span class="go">    pheno.to_csv(direc+os.sep+name+&quot;_id.txt&quot;, index=False, columns=[&#39;user_id&#39;],header=False)</span>
+
+
+
+<span class="go">def saveandformatsamplefile(top,bottom,direc):</span>
+
+<span class="go">    phenotype = pd.DataFrame()</span>
+<span class="go">    phenotype[&quot;user_id&quot;] = bottom[&quot;ID_1&quot;].values</span>
+<span class="go">    phenotype[&quot;phenotype&quot;] = bottom[&quot;pheno&quot;].values</span>
+<span class="go">    phenotype.to_csv(direc+os.sep+&quot;phenotype.csv&quot;,sep=&quot;\t&quot;,index=False)</span>
+
+<span class="gp">#</span><span class="c1">##make covarite file</span>
+<span class="go">    cov  = pd.DataFrame()</span>
+<span class="go">    cov[&quot;FID&quot;] = bottom[&quot;ID_2&quot;].values</span>
+<span class="go">    cov[&quot;IID&quot;] = bottom[&quot;ID_1&quot;].values</span>
+<span class="go">    cov[&quot;Sex&quot;] = 1</span>
+<span class="go">    cov[&quot;cov1&quot;] = bottom[&quot;sharedConfounder1_bin1&quot;].values</span>
+<span class="go">    cov[&quot;cov2&quot;] = bottom[&quot;independentConfounder2_cat_norm1&quot;].values</span>
+<span class="go">    cov[&quot;cov3&quot;] = bottom[&quot;independentConfounder2_cat_norm2&quot;].values</span>
+<span class="go">    cov[&quot;cov4&quot;] = bottom[&quot;independentConfounder3_cat_unif1&quot;].values</span>
+<span class="go">    sampletop  =  top.copy()</span>
+<span class="go">    samplebottom = bottom.copy()</span>
+
+<span class="go">    samplebottom[&quot;pheno&quot;] = samplebottom[&quot;pheno&quot;].apply(pd.to_numeric)</span>
+<span class="go">    samplebottom.pheno[samplebottom[&#39;pheno&#39;]&lt;0]=0</span>
+<span class="go">    samplebottom.pheno[samplebottom[&#39;pheno&#39;]&gt;0]=1</span>
+<span class="go">    samplebottom[&quot;pheno&quot;] = pd.to_numeric(samplebottom[&quot;pheno&quot;],downcast=&#39;integer&#39;)</span>
+<span class="go">    sample = pd.concat([sampletop, samplebottom], axis=0)</span>
+<span class="go">    sample= sample.astype(str)</span>
+
+
+<span class="go">    if &quot;test&quot; in direc:</span>
+<span class="go">        subsubsection(phenotype,direc,&quot;test&quot;)</span>
+<span class="go">        sample.to_csv(direc+os.sep+&quot;test_snptest.sample&quot;,index=False,sep=&quot; &quot;)</span>
+
+<span class="go">    if &quot;train&quot; in direc:</span>
+<span class="go">        subsubsection(phenotype,direc,&quot;train&quot;)</span>
+<span class="go">        sample.to_csv(direc+os.sep+&quot;train_snptest.sample&quot;,index=False,sep=&quot; &quot;)</span>
+
+
+
+
+
+
+<span class="go">    sample.pheno[sample[&#39;pheno&#39;]==&#39;1&#39;]=&#39;2&#39;</span>
+<span class="go">    sample.pheno[sample[&#39;pheno&#39;]==&#39;0&#39;]=&#39;1&#39;</span>
+
+<span class="go">    data = sample[[&quot;ID_1&quot;,&quot;ID_2&quot;,&quot;missing&quot;,&quot;pheno&quot;]]</span>
+<span class="go">    if &quot;test&quot; in direc:</span>
+<span class="go">        data.to_csv(direc+os.sep+&quot;test.sample&quot;,index=False,sep=&quot; &quot;)</span>
+
+<span class="go">    if &quot;train&quot; in direc:</span>
+<span class="go">        data.to_csv(direc+os.sep+&quot;train.sample&quot;,index=False,sep=&quot; &quot;)</span>
+
+<span class="go">    samplebottom.pheno[samplebottom[&#39;pheno&#39;]==1]=&#39;2&#39;</span>
+<span class="go">    samplebottom.pheno[samplebottom[&#39;pheno&#39;]==0]=&#39;1&#39;</span>
+
+<span class="go">    cov[&quot;cov5&quot;] = bottom[&quot;sharedConfounder4_norm1&quot;].values</span>
+<span class="go">    cov[&quot;cov6&quot;] = bottom[&quot;independentConfounder4_norm1&quot;].values</span>
+<span class="go">    cov.to_csv(direc+os.sep+&quot;YRI.covariate&quot;,index=False,sep=&quot;\t&quot;)</span>
+<span class="gp">    #</span><span class="c1">##PRS phenotype</span>
+<span class="go">    phenotype = pd.DataFrame()</span>
+<span class="go">    phenotype[&quot;FID&quot;] = bottom[&quot;ID_2&quot;].values</span>
+<span class="go">    phenotype[&quot;IID&quot;] = bottom[&quot;ID_1&quot;].values</span>
+<span class="go">    phenotype[&quot;phenotype&quot;] = bottom[&quot;pheno&quot;].values</span>
+<span class="go">    phenotype.to_csv(direc+os.sep+&quot;YRI.pheno&quot;,sep=&quot;\t&quot;,index=False)</span>
+<span class="gp">    #</span><span class="c1">##NewSample file</span>
+<span class="go">    sample = pd.concat([top, bottom], axis=0)</span>
+<span class="go">    sample = sample[[&#39;ID_1&#39;,&#39;ID_2&#39;,  &#39;missing&#39;,&#39;pheno&#39;]]</span>
+<span class="go">    sample.to_csv(direc+os.sep+&quot;YRIs.sample&quot;,index=False,sep=&quot; &quot;)</span>
+<span class="go">    return phenotype[&#39;FID&#39;].values</span>
+
+
+
+<span class="go">def splitsample(sample,direc):</span>
+<span class="go">    sampletop  = sample.head(1)</span>
+<span class="go">    samplebottom = sample.tail(len(sample)-1)</span>
+<span class="go">    samplebottom[&#39;ID_1&#39;] = samplebottom[&#39;ID_1&#39;].astype(str)+str(&quot;_&quot;) + samplebottom[&#39;ID_1&#39;].astype(str)</span>
+<span class="go">    samplebottom[&#39;ID_2&#39;] = samplebottom[&#39;ID_2&#39;].astype(str)+str(&quot;_&quot;) + samplebottom[&#39;ID_2&#39;].astype(str)</span>
+
+<span class="go">    samplebottom[&quot;pheno&quot;] = samplebottom[&quot;pheno&quot;].apply(pd.to_numeric)</span>
+<span class="go">    samplebottom[&quot;pheno&quot;].values[samplebottom[&quot;pheno&quot;] &lt; 0] = 0</span>
+<span class="go">    samplebottom[&quot;pheno&quot;].values[samplebottom[&quot;pheno&quot;] &gt; 0] = 1</span>
+<span class="go">    samplebottom[&quot;pheno&quot;] = pd.to_numeric(samplebottom[&quot;pheno&quot;],downcast=&#39;integer&#39;)</span>
+<span class="go">    x_train, x_test, y_train, y_test = train_test_split(samplebottom, samplebottom[&quot;pheno&quot;].values)</span>
+<span class="go">    sampletop.iloc[0,9]=&quot;B&quot;</span>
+<span class="go">    trainsample = saveandformatsamplefile(sampletop, x_train,direc+os.sep+&quot;train&quot;)</span>
+<span class="go">    testsample = saveandformatsamplefile(sampletop, x_test,direc+os.sep+&quot;test&quot;)</span>
+<span class="go">    return trainsample,testsample</span>
+
+<span class="go">def commit(direc,name):</span>
+<span class="go">    sample  = pd.read_csv(direc+os.sep+name+&quot;.sample&quot;,sep=&quot; &quot;)</span>
+<span class="go">    samplebottom = sample.tail(len(sample)-1)</span>
+<span class="go">    fam = pd.read_csv(direc+os.sep+name+&quot;.fam&quot;,sep=&quot;\s+&quot;,header=None)</span>
+<span class="go">    fam[5] = samplebottom[&#39;pheno&#39;].values</span>
+<span class="go">    fam.to_csv(direc+os.sep+name+&quot;.fam&quot;,header=False,index=False, sep=&quot; &quot;)</span>
+
+
+
+<span class="gp"># </span>Directory name <span class="k">in</span> which files will be stored.
+<span class="gp"># </span>Create four directories to contain train, test, and intermediate files.
+
+<span class="go">direc = sys.argv[1]</span>
+<span class="go">if not os.path.isdir(direc):</span>
+<span class="go">    os.mkdir(direc)</span>
+<span class="go">if not os.path.isdir(direc+os.sep+&quot;test&quot;):</span>
+<span class="go">    os.mkdir(direc+os.sep+&quot;test&quot;)</span>
+<span class="go">if not os.path.isdir(direc+os.sep+&quot;train&quot;):</span>
+<span class="go">    os.mkdir(direc+os.sep+&quot;train&quot;)</span>
+<span class="go">if not os.path.isdir(direc+os.sep+&quot;files&quot;):</span>
+<span class="go">    os.mkdir(direc+os.sep+&quot;files&quot;)</span>
+
+<span class="go">testdirec = direc+os.sep+&quot;test&quot;</span>
+<span class="go">traindirec = direc+os.sep+&quot;train&quot;</span>
+<span class="go">filesdirec = direc+os.sep+&quot;files&quot;</span>
+
+<span class="gp"># </span>Read the sample files, and ensure the path is correct.
+
+<span class="go">originalsamples = pd.read_csv(&quot;/l/proj/kuin0009/MuhammadMuneeb/MM_images2/generatedata/CEU_merge/Ysim_snptest.sample&quot;,sep=&quot; &quot;)</span>
+
+<span class="gp"># </span>This <span class="k">function</span> splits the samples into training and <span class="nb">test</span> sets.
+<span class="go">train,test = splitsample(originalsamples,direc)</span>
+
+<span class="gp"># </span>Extract <span class="nb">test</span> samples using bcftools
+<span class="go">os.system(&quot;bcftools view -S ./&quot;+testdirec+os.sep+&quot;test_id.txt /l/proj/kuin0009/MuhammadMuneeb/MM_images2/generatedata/CEU_merge/X.vcf  &gt; ./&quot;+testdirec+os.sep+&quot;test.vcf&quot;)</span>
+<span class="go">os.system(&quot; ./plink --vcf ./&quot;+testdirec+os.sep+&quot;test.vcf --make-bed --out ./&quot;+testdirec+os.sep+&quot;test&quot;)</span>
+<span class="go">os.system(&quot;./plink --bfile  ./&quot;+testdirec+os.sep+&quot;test  --recode --tab --out ./&quot;+testdirec+os.sep+&quot;test&quot;)</span>
+
+
+<span class="gp"># </span>Extract training samples using bcftools
+<span class="go">os.system(&quot;bcftools view -S ./&quot;+traindirec+os.sep+&quot;train_id.txt /l/proj/kuin0009/MuhammadMuneeb/MM_images2/generatedata/CEU_merge/X.vcf  &gt; ./&quot;+traindirec+os.sep+&quot;train.vcf&quot;)</span>
+<span class="go">os.system(&quot;./plink --vcf ./&quot;+traindirec+os.sep+&quot;train.vcf --make-bed  --out ./&quot;+traindirec+os.sep+&quot;train&quot;)</span>
+
+
+<span class="gp"># </span>Modify the fam file.
+<span class="go">commit(testdirec,&quot;test&quot;)</span>
+<span class="go">commit(traindirec,&quot;train&quot;)</span>
+
+<span class="go">os.system(&quot;./plink --bfile  ./&quot;+traindirec+os.sep+&quot;train  --recode --tab --out ./&quot;+traindirec+os.sep+&quot;train&quot;)</span>
+
+<span class="gp"># </span>Calculate GWAS using plink
+<span class="go">os.system(&quot;./plink --bfile ./&quot;+traindirec+os.sep+&quot;train --allow-no-sex --fisher --out ./&quot;+traindirec+os.sep+&quot;train&quot;)</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">Can we convert genotype sequences into images for cases/controls classification?</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="Download%20dataset%20or%20generate%20data.html">Download dataset or generate data</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Divide Data</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#python-divide-data">python Divide Data</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Pvalue.html">Pvalue</a></li>
+<li class="toctree-l1"><a class="reference internal" href="1DCNN.html">1DCNN</a></li>
+<li class="toctree-l1"><a class="reference internal" href="2DCNN.html">2DCNN</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="Download%20dataset%20or%20generate%20data.html" title="previous chapter">Download dataset or generate data</a></li>
+      <li>Next: <a href="Pvalue.html" title="next chapter">Pvalue</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2022, Muhammad Muneeb and Samuel F. Feng.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.4.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/Divide Data.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
